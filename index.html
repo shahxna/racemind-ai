@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RaceMind AI — Telemetry Analyzer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#07090d;--panel:#11161f;--panel2:#161c27;--line:#1e2734;
+    --txt:#e8edf4;--mut:#8896a8;--red:#ff2d3d;--red2:#ff5964;
+    --grn:#12e28b;--amb:#ffb020;--cyn:#31d1ff;--pur:#9d6bff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased}
+  .mono{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+  a{color:var(--cyn);text-decoration:none}
+
+  header{border-bottom:1px solid var(--line);background:rgba(7,9,13,.85);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50}
+  .hin{display:flex;align-items:center;justify-content:space-between;height:62px}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:.5px;font-size:17px}
+  .logo{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--red),#8a0010);display:grid;place-items:center;box-shadow:0 0 16px rgba(255,45,61,.5)}
+  .logo::before{content:"";width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 6px #fff}
+  .brand .accent{color:var(--red)}
+  .htag{font-size:12px;color:var(--mut);letter-spacing:.3px}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:9px;font-weight:600;font-size:14px;cursor:pointer;border:none;transition:.16s;font-family:inherit}
+  .btn-primary{background:var(--red);color:#fff;box-shadow:0 6px 20px rgba(255,45,61,.3)}
+  .btn-primary:hover{background:var(--red2);transform:translateY(-1px)}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
+  .btn-ghost:hover{border-color:var(--red2);color:var(--red2)}
+
+  /* upload / empty state */
+  #empty{padding:70px 0 90px}
+  .hero-h{font-size:clamp(30px,5vw,50px);font-weight:850;letter-spacing:-1.2px;line-height:1.05;max-width:16ch}
+  .hero-h .g{background:linear-gradient(90deg,#fff,#ff6b76);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero-p{color:var(--mut);font-size:17px;margin-top:16px;max-width:56ch}
+  .drop{margin-top:34px;border:1.5px dashed var(--line);border-radius:16px;background:linear-gradient(180deg,var(--panel),transparent);
+    padding:44px;text-align:center;transition:.18s;cursor:pointer}
+  .drop.drag{border-color:var(--red2);background:rgba(255,45,61,.06)}
+  .drop .big{font-size:40px}
+  .drop h3{font-size:18px;margin-top:10px}
+  .drop p{color:var(--mut);font-size:14px;margin-top:6px}
+  .row-btn{display:flex;gap:14px;justify-content:center;margin-top:22px;flex-wrap:wrap}
+  .hint{color:var(--mut);font-size:12.5px;margin-top:16px}
+
+  /* app view */
+  #app{display:none;padding:24px 0 80px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:20px}
+  .sess{display:flex;gap:26px;flex-wrap:wrap}
+  .kv .k{font-size:10.5px;color:var(--mut);letter-spacing:.9px;text-transform:uppercase}
+  .kv .v{font-size:19px;font-weight:800;font-family:"SF Mono",monospace;margin-top:2px}
+  .selrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:14px;font-family:"SF Mono",monospace;cursor:pointer}
+  .sel-lbl{font-size:11px;color:var(--mut);letter-spacing:.6px;text-transform:uppercase;display:block;margin-bottom:5px}
+
+  .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+  @media(max-width:920px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .card h4{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+
+  /* AI panel */
+  .ai{background:linear-gradient(120deg,rgba(157,107,255,.09),rgba(49,209,255,.05));border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;display:grid;grid-template-columns:auto 1fr;gap:15px}
+  .aiav{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--pur),var(--cyn));display:grid;place-items:center;font-weight:800}
+  .aihd{font-size:12px;color:var(--mut);margin-bottom:8px}
+  .aihd b{color:var(--txt)}
+  #aiText{font-size:15px;line-height:1.65}
+  #aiText p{margin-bottom:9px}
+  #aiText .hi{color:var(--red2);font-weight:700;font-family:"SF Mono",monospace}
+  #aiText .ok{color:var(--grn);font-weight:700;font-family:"SF Mono",monospace}
+  #aiText b{color:var(--txt)}
+
+  canvas.chart{width:100%!important;height:230px!important}
+  .mini{height:170px!important}
+
+  /* gauges playback */
+  .gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .gauge{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
+  .gval{font-size:24px;font-weight:800;font-family:"SF Mono",monospace;line-height:1}
+  .gunit{font-size:9.5px;color:var(--mut);letter-spacing:.6px;margin-top:5px}
+  input[type=range]{width:100%;margin-top:8px;accent-color:var(--red)}
+
+  /* segment table */
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+  th{font-size:10.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--mut)}
+  td.num{font-family:"SF Mono",monospace;text-align:right}
+  .loss{color:var(--red2)}.gain{color:var(--grn)}
+  .barcell{position:relative}
+  .barcell i{position:absolute;left:0;top:50%;transform:translateY(-50%);height:60%;border-radius:3px;opacity:.35}
+
+  footer{border-top:1px solid var(--line);padding:26px 0;color:var(--mut);font-size:12.5px;text-align:center;margin-top:40px}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--grn);border:1px solid rgba(18,226,139,.3);background:rgba(18,226,139,.08);padding:3px 10px;border-radius:100px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hin">
+    <div class="brand"><span class="logo"></span>RACEMIND<span class="accent">AI</span></div>
+    <div class="htag">Built-in telemetry analysis · no account needed</div>
+    <button class="btn btn-ghost" id="newBtn" style="display:none" onclick="reset()">↺ New session</button>
+  </div>
+</header>
+
+<!-- EMPTY / UPLOAD STATE -->
+<main id="empty"><div class="wrap">
+  <div class="pill" style="margin-bottom:18px">● Portfolio project · v1</div>
+  <h1 class="hero-h">Stop reading 50 graphs.<br><span class="g">Upload your lap.</span></h1>
+  <p class="hero-p">Drop in a telemetry export (CSV) from iRacing, Assetto Corsa, MoTeC or Formula Student. RaceMind finds your laps, compares them, and tells you in plain English exactly where the time went.</p>
+
+  <div class="drop" id="drop">
+    <div class="big">📈</div>
+    <h3>Drag &amp; drop a telemetry CSV</h3>
+    <p>or click to browse — everything runs in your browser, nothing is uploaded to a server</p>
+    <input type="file" id="file" accept=".csv,.txt" style="display:none">
+  </div>
+  <div class="row-btn">
+    <button class="btn btn-primary" onclick="document.getElementById('file').click()">Choose a CSV file</button>
+    <button class="btn btn-ghost" onclick="loadSample()">▶ Try a sample session</button>
+  </div>
+  <p class="hint">Expected columns (auto-detected, flexible names): time, lap, distance, speed, rpm, gear, throttle, brake, steering. Missing columns are handled gracefully.</p>
+  <p class="hint" id="err" style="color:var(--red2)"></p>
+</div></main>
+
+<!-- APP -->
+<main id="app"><div class="wrap">
+  <div class="topbar">
+    <div class="sess">
+      <div class="kv"><div class="k">Session</div><div class="v" id="s-name">—</div></div>
+      <div class="kv"><div class="k">Laps</div><div class="v" id="s-laps">—</div></div>
+      <div class="kv"><div class="k">Best lap</div><div class="v" style="color:var(--grn)" id="s-best">—</div></div>
+      <div class="kv"><div class="k">Top speed</div><div class="v" style="color:var(--cyn)" id="s-top">—</div></div>
+    </div>
+    <div class="selrow">
+      <div><span class="sel-lbl">Baseline lap</span><select id="lapA"></select></div>
+      <div style="font-size:20px;color:var(--mut);align-self:end;padding-bottom:6px">vs</div>
+      <div><span class="sel-lbl" style="color:var(--red2)">Compare lap</span><select id="lapB"></select></div>
+    </div>
+  </div>
+
+  <!-- AI analysis -->
+  <div class="ai">
+    <div class="aiav">AI</div>
+    <div>
+      <div class="aihd"><b>RaceMind analysis</b> · <span id="ai-sub">—</span></div>
+      <div id="aiText"></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h4>Speed trace — baseline vs compare <span id="lg1" class="mono" style="font-weight:600;font-size:11px"></span></h4>
+      <canvas id="speedChart" class="chart"></canvas>
+    </div>
+    <div class="card">
+      <h4>Time delta over the lap</h4>
+      <canvas id="deltaChart" class="chart"></canvas>
+      <p style="font-size:11.5px;color:var(--mut);margin-top:8px">Line rising = compare lap losing time. Final value = lap-time difference.</p>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:16px">
+    <div class="card">
+      <h4>Throttle &amp; brake — compare lap</h4>
+      <canvas id="inputChart" class="chart"></canvas>
+    </div>
+    <div class="card">
+      <h4>Where the time went — by segment</h4>
+      <table><thead><tr><th>Segment</th><th style="text-align:right">Δ time</th><th style="width:38%">Impact</th></tr></thead>
+        <tbody id="segBody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:16px">
+    <div class="card">
+      <h4>Lap times</h4>
+      <canvas id="lapChart" class="chart mini"></canvas>
+    </div>
+    <div class="card">
+      <h4>Lap replay — compare lap <span id="rep-d" class="mono" style="font-weight:600;font-size:11px;color:var(--mut)"></span></h4>
+      <div class="gauges">
+        <div class="gauge"><div class="gval" id="rg-speed" style="color:var(--cyn)">—</div><div class="gunit">KM/H SPEED</div></div>
+        <div class="gauge"><div class="gval" id="rg-rpm" style="color:var(--red2)">—</div><div class="gunit">RPM</div></div>
+        <div class="gauge"><div class="gval" id="rg-gear" style="color:var(--txt)">—</div><div class="gunit">GEAR</div></div>
+        <div class="gauge"><div class="gval" id="rg-thr" style="color:var(--grn)">—</div><div class="gunit">% THROTTLE</div></div>
+        <div class="gauge"><div class="gval" id="rg-brk" style="color:var(--amb)">—</div><div class="gunit">% BRAKE</div></div>
+        <div class="gauge"><div class="gval" id="rg-steer" style="color:var(--pur)">—</div><div class="gunit">° STEER</div></div>
+      </div>
+      <input type="range" id="scrub" min="0" max="1000" value="0">
+    </div>
+  </div>
+</div></main>
+
+<footer>
+  RaceMind AI · Built-in analysis engine — all computation runs client-side in your browser.<br>
+  A portfolio project · The AI Copilot for Race Engineers.
+</footer>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+let DATA=null;      // {name, laps:[{lap, samples:[{t,d,speed,rpm,gear,thr,brk,steer,...}], lapTime, maxD}], units}
+let charts={};
+
+/* ---------------- CSV PARSING ---------------- */
+const SYN={
+  time:['time','timestamp','sessiontime','session_time','tick','t','secs','seconds'],
+  lap:['lap','lapnumber','lap_no','lapindex','lapidx','lap_number','currentlap'],
+  dist:['lapdist','lap_distance','lapdistance','distance','dist','slap','lapdistpct','distancepct','lap_dist'],
+  speed:['speed','vcar','gpsspeed','gps_speed','velocity','v','spd','speedkmh'],
+  rpm:['rpm','enginerpm','engine_rpm','nmot','revs'],
+  gear:['gear','ngear','currentgear'],
+  thr:['throttle','tps','rthrottle','throttlepos','accelerator','gas','aps'],
+  brk:['brake','pbrakef','brakepos','rbrake','brakepressure','braking'],
+  steer:['steering','steerangle','steer_angle','steerinput','steer','wheelangle','angle']
+};
+function normKey(h){return h.toLowerCase().replace(/\[.*?\]|\(.*?\)/g,'').replace(/[^a-z0-9]/g,'').trim();}
+function detect(headers){
+  const map={};const nk=headers.map(normKey);
+  for(const field in SYN){
+    let best=-1;
+    for(const cand of SYN[field]){
+      const i=nk.indexOf(cand); if(i>=0){best=i;break;}
+    }
+    if(best<0){ // fuzzy contains
+      for(let i=0;i<nk.length;i++){ if(SYN[field].some(c=>nk[i].includes(c))){best=i;break;} }
+    }
+    if(best>=0) map[field]=best;
+  }
+  return map;
+}
+function parseCSV(text){
+  // strip possible MoTeC-style metadata: find header line containing a known keyword
+  let lines=text.split(/\r?\n/).filter(l=>l.trim().length);
+  const delim=(text.split('\t').length>text.split(',').length)?'\t':',';
+  let hIdx=0;
+  for(let i=0;i<Math.min(lines.length,40);i++){
+    const nk=lines[i].split(delim).map(normKey);
+    if(nk.some(k=>['lap','speed','rpm','throttle','time','distance','lapdist'].includes(k))){hIdx=i;break;}
+  }
+  const headers=lines[hIdx].split(delim).map(s=>s.replace(/^["']|["']$/g,'').trim());
+  const map=detect(headers);
+  if(map.speed===undefined && map.rpm===undefined && map.time===undefined)
+    throw new Error("Couldn't find telemetry columns (speed / rpm / time). Check the file has a header row.");
+  const rows=[];
+  for(let i=hIdx+1;i<lines.length;i++){
+    const c=lines[i].split(delim);
+    if(c.length<2)continue;
+    const num=k=>{const v=parseFloat(c[map[k]]);return isNaN(v)?null:v;};
+    rows.push({
+      lap:map.lap!==undefined?num('lap'):null,
+      t:map.time!==undefined?num('time'):null,
+      d:map.dist!==undefined?num('dist'):null,
+      speed:map.speed!==undefined?num('speed'):null,
+      rpm:map.rpm!==undefined?num('rpm'):null,
+      gear:map.gear!==undefined?num('gear'):null,
+      thr:map.thr!==undefined?num('thr'):null,
+      brk:map.brk!==undefined?num('brk'):null,
+      steer:map.steer!==undefined?num('steer'):null
+    });
+  }
+  return {rows, hasLap:map.lap!==undefined, hasTime:map.time!==undefined, hasDist:map.dist!==undefined};
+}
+
+/* ---------------- BUILD LAP STRUCTURE ---------------- */
+function buildLaps(parsed, name){
+  let {rows,hasLap,hasTime,hasDist}=parsed;
+  // guess speed unit -> normalise to km/h
+  const maxSpeed=Math.max(...rows.map(r=>r.speed||0));
+  const spScale=maxSpeed<80? (maxSpeed<40?3.6:1) : 1; // if looks like m/s (<~40) convert; leave otherwise
+  rows.forEach(r=>{ if(r.speed!=null) r.speed=r.speed*spScale; });
+  // throttle/brake to 0-100
+  const maxThr=Math.max(...rows.map(r=>r.thr||0));
+  const thrScale=(maxThr>0&&maxThr<=1.5)?100:1;
+  rows.forEach(r=>{ if(r.thr!=null)r.thr=Math.max(0,Math.min(100,r.thr*thrScale));
+                    if(r.brk!=null){const s=(Math.max(...rows.map(x=>x.brk||0))<=1.5)?100:1;r.brk=Math.max(0,Math.min(100,r.brk*s));}});
+
+  // group into laps
+  let groups={};
+  if(hasLap){
+    rows.forEach(r=>{const L=Math.round(r.lap); (groups[L]=groups[L]||[]).push(r);});
+  } else {
+    // split by distance resets
+    let L=1,prevD=-1;
+    rows.forEach(r=>{ const d=r.d!=null?r.d:0; if(d<prevD-5){L++;} prevD=d; (groups[L]=groups[L]||[]).push(r); });
+  }
+  const laps=[];
+  Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(L=>{
+    const s=groups[L];
+    // build lap distance if missing
+    if(!hasDist||s[0].d==null){
+      let dd=0; for(let i=0;i<s.length;i++){ if(i>0){const v=(s[i].speed||0)/3.6; const dt=(hasTime&&s[i].t!=null&&s[i-1].t!=null)?(s[i].t-s[i-1].t):0.05; dd+=v*dt;} s[i].d=dd; }
+    } else {
+      const d0=s[0].d; s.forEach(r=>r.d=r.d-d0);
+    }
+    // lap time
+    let lt;
+    if(hasTime&&s[0].t!=null){ lt=s[s.length-1].t-s[0].t; }
+    else { lt=0; for(let i=1;i<s.length;i++){lt+=0.05;} }
+    // time-in-lap
+    const t0=hasTime&&s[0].t!=null?s[0].t:0;
+    s.forEach((r,i)=>{ r.tl = (hasTime&&r.t!=null)? r.t-t0 : i*0.05; });
+    const maxD=s[s.length-1].d;
+    // filter out absurd partial laps (out/in laps) unless it's the only data
+    laps.push({lap:L, samples:s, lapTime:lt, maxD});
+  });
+  // drop clearly-partial laps (< 55% of median length) when we have enough
+  const meds=laps.map(l=>l.maxD).sort((a,b)=>a-b);
+  const medD=meds[Math.floor(meds.length/2)]||1;
+  let clean=laps.filter(l=>l.maxD>medD*0.55 && l.lapTime>1);
+  if(clean.length<2)clean=laps;
+  return {name, laps:clean};
+}
+
+/* ---------------- ANALYSIS ---------------- */
+function interp(samples, key, dist){
+  // linear interpolate 'key' at lap-distance 'dist'
+  const s=samples;
+  if(dist<=s[0].d)return s[0][key];
+  if(dist>=s[s.length-1].d)return s[s.length-1][key];
+  for(let i=1;i<s.length;i++){
+    if(s[i].d>=dist){
+      const a=s[i-1],b=s[i]; const f=(dist-a.d)/((b.d-a.d)||1);
+      return a[key]+ (b[key]-a[key])*f;
+    }
+  }
+  return s[s.length-1][key];
+}
+function compare(lapA, lapB){
+  const N=200;
+  const maxD=Math.min(lapA.maxD, lapB.maxD);
+  const grid=[],dA=[],dB=[],spA=[],spB=[],delta=[];
+  for(let i=0;i<=N;i++){
+    const d=maxD*i/N; grid.push(d);
+    const ta=interp(lapA.samples,'tl',d), tb=interp(lapB.samples,'tl',d);
+    delta.push(tb-ta);
+    spA.push(interp(lapA.samples,'speed',d)); spB.push(interp(lapB.samples,'speed',d));
+  }
+  // segments
+  const SEG=8, seg=[];
+  for(let k=0;k<SEG;k++){
+    const i0=Math.floor(k/SEG*N), i1=Math.floor((k+1)/SEG*N);
+    const loss=delta[i1]-delta[i0];
+    seg.push({idx:k+1, from:grid[i0], to:grid[i1], loss});
+  }
+  return {grid,maxD,delta,spA,spB,seg,total:delta[N]};
+}
+function fmtLap(t){ const m=Math.floor(t/60), s=(t-m*60); return m+":"+s.toFixed(3).padStart(6,'0'); }
+
+/* ---------------- NARRATIVE ---------------- */
+function narrate(A,B,cmp){
+  const el=$('#aiText'); el.innerHTML='';
+  const diff=cmp.total;
+  const faster=diff<0;
+  const worst=[...cmp.seg].sort((a,b)=>b.loss-a.loss)[0];
+  const best=[...cmp.seg].sort((a,b)=>a.loss-b.loss)[0];
+  const totalLossOnBad = cmp.seg.filter(s=>s.loss>0).reduce((a,s)=>a+s.loss,0);
+  const pctWorst = totalLossOnBad>0? Math.round(worst.loss/totalLossOnBad*100):0;
+
+  // braking + throttle detail in worst segment
+  function firstBrake(lap){ for(const s of lap.samples){ if(s.d>=worst.from && s.d<=worst.to && (s.brk||0)>15) return s.d; } return null; }
+  const bA=firstBrake(A), bB=firstBrake(B);
+  function avgThr(lap){ let sum=0,n=0; for(const s of lap.samples){ if(s.d>=worst.from&&s.d<=worst.to&&s.thr!=null){sum+=s.thr;n++;} } return n?sum/n:null; }
+  const tA=avgThr(A), tB=avgThr(B);
+  const vminA=Math.min(...A.samples.filter(s=>s.d>=worst.from&&s.d<=worst.to).map(s=>s.speed||9e9));
+  const vminB=Math.min(...B.samples.filter(s=>s.d>=worst.from&&s.d<=worst.to).map(s=>s.speed||9e9));
+
+  const P=[];
+  P.push(`<p><b>Lap ${B.lap}</b> was <span class="${faster?'ok':'hi'}">${faster?'':'+'}${diff.toFixed(3)}s</span> ${faster?'faster than':'slower than'} <b>Lap ${A.lap}</b>.</p>`);
+  if(Math.abs(worst.loss)>0.03){
+    P.push(`<p>The biggest single difference was in <b>Segment ${worst.idx}</b> (${Math.round(worst.from)}–${Math.round(worst.to)} m), which accounted for <span class="hi">${Math.abs(worst.loss).toFixed(3)}s</span>${pctWorst>0?` — about <span class="hi">${pctWorst}%</span> of the total time lost`:''}.</p>`);
+  }
+  const bits=[];
+  if(bA!=null&&bB!=null&&Math.abs(bB-bA)>3){
+    bits.push(`you braked <span class="hi">${Math.abs(bB-bA).toFixed(0)} m ${bB<bA?'earlier':'later'}</span> into that section`);
+  }
+  if(tA!=null&&tB!=null&&Math.abs(tB-tA)>4){
+    bits.push(`average throttle there was <span class="${tB>tA?'ok':'hi'}">${(tB-tA>0?'+':'')}${(tB-tA).toFixed(0)}%</span>`);
+  }
+  if(isFinite(vminA)&&isFinite(vminB)&&Math.abs(vminB-vminA)>2){
+    bits.push(`minimum corner speed was <span class="${vminB>vminA?'ok':'hi'}">${(vminB-vminA>0?'+':'')}${(vminB-vminA).toFixed(0)} km/h</span>`);
+  }
+  if(bits.length)P.push(`<p>In that segment, ${bits.join(', ')}.</p>`);
+  if(Math.abs(best.loss)>0.03 && best.loss<0){
+    P.push(`<p>You did gain time in <b>Segment ${best.idx}</b> — <span class="ok">${best.loss.toFixed(3)}s</span> quicker there.</p>`);
+  }
+  // coaching line
+  let coach='';
+  if(!faster && bB!=null&&bA!=null&&bB<bA-3) coach='Try carrying the brake a touch later into the slow sections and getting back to full throttle sooner on exit.';
+  else if(!faster && tB<tA) coach='The lap time is mostly in throttle application — commit to full throttle earlier out of the corners.';
+  else if(faster) coach='This is your reference lap. Bank what you did here and repeat the exit phase — that is where most of the gain came from.';
+  else coach='Focus on the worst segment first; the rest of the lap is close to matched.';
+  P.push(`<p><b>Coach:</b> ${coach}</p>`);
+  el.innerHTML=P.join('');
+  $('#ai-sub').textContent=`${A.samples.length+B.samples.length} samples analysed · Lap ${B.lap} vs Lap ${A.lap}`;
+}
+
+/* ---------------- CHARTS ---------------- */
+const gridClr='rgba(255,255,255,.05)', tick='#8896a8';
+function baseOpts(yTitle){return{responsive:true,maintainAspectRatio:false,animation:false,
+  plugins:{legend:{labels:{color:tick,boxWidth:12,font:{size:11}}}},
+  scales:{x:{grid:{color:gridClr},ticks:{color:tick,maxTicksLimit:8,font:{size:10}},title:{display:true,text:'lap distance (m)',color:tick,font:{size:10}}},
+          y:{grid:{color:gridClr},ticks:{color:tick,font:{size:10}},title:{display:true,text:yTitle,color:tick,font:{size:10}}}}};}
+function kill(k){ if(charts[k]){charts[k].destroy(); delete charts[k];} }
+
+function render(A,B){
+  const cmp=compare(A,B);
+  narrate(A,B,cmp);
+  const labels=cmp.grid.map(d=>Math.round(d));
+  $('#lg1').innerHTML=`<span style="color:var(--cyn)">Lap ${A.lap}</span> · <span style="color:var(--red2)">Lap ${B.lap}</span>`;
+
+  kill('speed');
+  charts.speed=new Chart($('#speedChart'),{type:'line',data:{labels,datasets:[
+    {label:'Lap '+A.lap,data:cmp.spA,borderColor:'#31d1ff',borderWidth:2,pointRadius:0,tension:.25},
+    {label:'Lap '+B.lap,data:cmp.spB,borderColor:'#ff5964',borderWidth:2,pointRadius:0,tension:.25}
+  ]},options:baseOpts('speed (km/h)')});
+
+  kill('delta');
+  const dcol=cmp.delta.map(v=>v>=0?'#ff5964':'#12e28b');
+  charts.delta=new Chart($('#deltaChart'),{type:'line',data:{labels,datasets:[
+    {label:'Δ time (s)',data:cmp.delta,borderColor:'#ffb020',borderWidth:2,pointRadius:0,
+     fill:true,backgroundColor:'rgba(255,176,32,.08)',tension:.2}
+  ]},options:{...baseOpts('Δ time (s)  (+ = slower)'),plugins:{legend:{display:false}}}});
+
+  // inputs for lap B
+  kill('input');
+  const idx=[],thr=[],brk=[];
+  const N=200,maxD=B.maxD;
+  for(let i=0;i<=N;i++){const d=maxD*i/N; idx.push(Math.round(d)); thr.push(interp(B.samples,'thr',d)); brk.push(interp(B.samples,'brk',d));}
+  charts.input=new Chart($('#inputChart'),{type:'line',data:{labels:idx,datasets:[
+    {label:'Throttle %',data:thr,borderColor:'#12e28b',borderWidth:1.8,pointRadius:0,fill:true,backgroundColor:'rgba(18,226,139,.1)',tension:.15},
+    {label:'Brake %',data:brk,borderColor:'#ffb020',borderWidth:1.8,pointRadius:0,fill:true,backgroundColor:'rgba(255,176,32,.1)',tension:.15}
+  ]},options:baseOpts('input %')});
+
+  // segment table
+  const tb=$('#segBody'); tb.innerHTML='';
+  const maxAbs=Math.max(...cmp.seg.map(s=>Math.abs(s.loss)),0.001);
+  cmp.seg.forEach(s=>{
+    const cls=s.loss>0?'loss':'gain';
+    const w=Math.abs(s.loss)/maxAbs*100;
+    const col=s.loss>0?'var(--red2)':'var(--grn)';
+    tb.innerHTML+=`<tr><td>Seg ${s.idx} <span style="color:var(--mut);font-size:11px">${Math.round(s.from)}–${Math.round(s.to)}m</span></td>
+      <td class="num ${cls}">${s.loss>0?'+':''}${s.loss.toFixed(3)}s</td>
+      <td class="barcell"><i style="width:${w}%;background:${col}"></i></td></tr>`;
+  });
+
+  // lap times bar
+  kill('lap');
+  const ll=DATA.laps.map(l=>'L'+l.lap), lt=DATA.laps.map(l=>+l.lapTime.toFixed(3));
+  const best=Math.min(...lt);
+  charts.lap=new Chart($('#lapChart'),{type:'bar',data:{labels:ll,datasets:[
+    {data:lt,backgroundColor:lt.map(v=>v===best?'#12e28b':'#31456b'),borderRadius:4}
+  ]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:c=>fmtLap(c.raw)}}},
+    scales:{x:{grid:{display:false},ticks:{color:tick,font:{size:10}}},
+            y:{grid:{color:gridClr},ticks:{color:tick,font:{size:9},callback:v=>v.toFixed(1)+'s'},min:Math.floor(best-0.5)}}}});
+
+  // replay scrub bound to lap B
+  setupScrub(B);
+}
+
+/* ---------------- REPLAY ---------------- */
+function setupScrub(lap){
+  const sc=$('#scrub'); sc.value=0;
+  const upd=()=>{
+    const d=lap.maxD*(sc.value/1000);
+    $('#rg-speed').textContent=Math.round(interp(lap.samples,'speed',d));
+    const rpm=interp(lap.samples,'rpm',d); $('#rg-rpm').textContent=rpm?Math.round(rpm).toLocaleString():'—';
+    const g=interp(lap.samples,'gear',d); $('#rg-gear').textContent=g?Math.round(g):'—';
+    $('#rg-thr').textContent=Math.round(interp(lap.samples,'thr',d)||0);
+    $('#rg-brk').textContent=Math.round(interp(lap.samples,'brk',d)||0);
+    const st=interp(lap.samples,'steer',d); $('#rg-steer').textContent=st!=null?Math.round(st):'—';
+    $('#rep-d').textContent='@ '+Math.round(d)+' m';
+  };
+  sc.oninput=upd; upd();
+}
+
+/* ---------------- WIRE UP ---------------- */
+function showApp(built){
+  DATA=built;
+  $('#s-name').textContent=built.name;
+  $('#s-laps').textContent=built.laps.length;
+  const best=[...built.laps].sort((a,b)=>a.lapTime-b.lapTime)[0];
+  $('#s-best').textContent=fmtLap(best.lapTime);
+  const top=Math.max(...built.laps.flatMap(l=>l.samples.map(s=>s.speed||0)));
+  $('#s-top').textContent=Math.round(top)+' km/h';
+
+  const A=$('#lapA'),B=$('#lapB'); A.innerHTML='';B.innerHTML='';
+  built.laps.forEach(l=>{
+    const label=`Lap ${l.lap}  (${fmtLap(l.lapTime)})`;
+    A.add(new Option(label,l.lap)); B.add(new Option(label,l.lap));
+  });
+  // default: baseline = best lap, compare = a different lap
+  A.value=best.lap;
+  const other=built.laps.find(l=>l.lap!==best.lap)||best; B.value=other.lap;
+  const doRender=()=>{
+    const la=built.laps.find(l=>l.lap==A.value), lb=built.laps.find(l=>l.lap==B.value);
+    render(la,lb);
+  };
+  A.onchange=doRender; B.onchange=doRender; doRender();
+
+  $('#empty').style.display='none'; $('#app').style.display='block'; $('#newBtn').style.display='inline-flex';
+  window.scrollTo(0,0);
+}
+function reset(){ $('#app').style.display='none'; $('#empty').style.display='block'; $('#newBtn').style.display='none'; $('#err').textContent=''; }
+
+function handleText(text,name){
+  try{
+    const parsed=parseCSV(text);
+    const built=buildLaps(parsed,name);
+    if(built.laps.length<1)throw new Error('No complete laps found in this file.');
+    showApp(built);
+  }catch(e){ $('#err').textContent='⚠ '+e.message; }
+}
+$('#file').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader(); r.onload=()=>handleText(r.result,f.name.replace(/\.[^.]+$/,'')); r.readAsText(f);
+});
+const drop=$('#drop');
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag');}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0]; if(f){const r=new FileReader();r.onload=()=>handleText(r.result,f.name.replace(/\.[^.]+$/,''));r.readAsText(f);}});
+drop.addEventListener('click',()=>$('#file').click());
+
+/* ---------------- SAMPLE SESSION (synthetic but realistic) ---------------- */
+function loadSample(){
+  const rows=[]; const LAPLEN=3200; const step=16; // metres
+  // corner model: list of {pos, radius(=minSpeed), width}
+  const corners=[
+    {p:380,v:95,w:150},{p:820,v:150,w:120},{p:1250,v:70,w:170},
+    {p:1750,v:120,w:130},{p:2200,v:88,w:160},{p:2750,v:135,w:120}
+  ];
+  function speedAt(d,laterBrakeErr,thrErr){
+    let vmax=305;
+    let v=vmax;
+    corners.forEach(c=>{
+      const dist=Math.abs(d-c.p);
+      if(dist<c.w){ const f=1-(dist/c.w); v=Math.min(v, c.v + (vmax-c.v)*(1-f)); }
+    });
+    return v;
+  }
+  const NLAP=5;
+  for(let lap=1;lap<=NLAP;lap++){
+    // lap 4 has a mistake at corner 3 (early brake, lower min speed, hesitant throttle)
+    const bad = (lap===4);
+    let t=0, prevV=null;
+    for(let d=0; d<=LAPLEN; d+=step){
+      let v=speedAt(d);
+      // per-lap tiny noise + improvement trend (later laps slightly faster except bad lap)
+      v *= (1 + (lap-3)*0.004) ;
+      if(bad){
+        const dist=Math.abs(d-1250);
+        if(dist<260 && d<1250){ v*=0.82; }        // braked too early before corner 3
+        if(dist<200 && d>1250){ v*=0.9; }          // slow, hesitant exit
+      }
+      v=Math.max(45,v);
+      const vms=v/3.6;
+      if(prevV!=null){ const dt=step/((prevV/3.6+vms)/2); t+=dt; }
+      prevV=v;
+      // derive channels
+      const accel = prevV!=null?0:0;
+      // throttle/brake from local gradient
+      const vNext=speedAt(Math.min(LAPLEN,d+step));
+      let thr=100, brk=0;
+      if(vNext < v-1){ brk=Math.min(100,(v-vNext)*6); thr=Math.max(0,40-(v-vNext)*4); }
+      else if(vNext>v+0.5){ thr=100; }
+      if(bad){ const dist=Math.abs(d-1250); if(dist<260&&d<1250){brk=Math.min(100,brk+45);thr=Math.max(0,thr-40);} if(dist<200&&d>1250){thr=Math.max(0,thr-25);} }
+      const gear=Math.max(2,Math.min(8,Math.round(v/40)));
+      const rpm=Math.round(6000 + (v%40)/40*5500 + (gear<3?1500:0));
+      // steering: near a corner
+      let steer=0; corners.forEach(c=>{ if(Math.abs(d-c.p)<c.w) steer+= (1-Math.abs(d-c.p)/c.w)* (c.p%2?1:-1) * (200-c.v); });
+      steer=Math.round(steer/6);
+      rows.push([lap, t.toFixed(3), d, v.toFixed(1), rpm, gear, Math.round(thr), Math.round(brk), steer]);
+    }
+    // offset session time so laps are continuous
+  }
+  // make session time continuous across laps
+  let base=0; let curLap=1;
+  const out=[];
+  let lapStart={};
+  // recompute continuous t
+  let acc=0, lastLap=null, lastT=0;
+  rows.forEach(r=>{
+    if(r[0]!==lastLap){ if(lastLap!==null) acc+=lastT+ r[1]*0; if(lastLap!==null) base=acc; lastLap=r[0]; }
+  });
+  // simpler: build CSV with per-lap time; parser handles lap grouping using lap column
+  let csv='time,lap,lapdist,speed,rpm,gear,throttle,brake,steering\n';
+  // convert per-lap t to continuous session time
+  let sess=0, prevLap=rows[0][0], prevLapEnd=0;
+  const lapTimes={};
+  rows.forEach(r=>{ lapTimes[r[0]]=Math.max(lapTimes[r[0]]||0, parseFloat(r[1])); });
+  let offset=0; let seenLap=rows[0][0];
+  rows.forEach(r=>{
+    if(r[0]!==seenLap){ offset+=lapTimes[seenLap]+0.3; seenLap=r[0]; }
+    const st=(offset+parseFloat(r[1])).toFixed(3);
+    csv+=`${st},${r[0]},${r[2]},${r[3]},${r[4]},${r[5]},${r[6]},${r[7]},${r[8]}\n`;
+  });
+  handleText(csv,'Sample Session — Silverstone (demo)');
+}
+</script>
+</body>
+</html>
