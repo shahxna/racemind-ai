@@ -9,6 +9,8 @@ https://shahxna.github.io/racemind-ai/
 
 ---
 
+![RaceMind dashboard](dashboard.2026.png)
+
 ## What it does
 
 - **Upload any telemetry CSV** — iRacing, Assetto Corsa, MoTeC exports, or Formula Student logs. Column names are auto-detected, so different formats just work.
