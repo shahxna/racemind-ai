@@ -4,7 +4,8 @@
 
 > Instead of reading 50 overlaid graphs, you get: *"Lap 4 was 1.75s slower than your best. Most of the loss came from the corner at ~1250m, where you braked earlier and carried less minimum speed."*
 
-**🔗 Live demo:** COMING SOON
+**🔗 Live demo:** 
+https://shahxna.github.io/racemind-ai/
 
 ---
 
